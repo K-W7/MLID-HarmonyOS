@@ -42,6 +42,18 @@ $env:DEVECO_SDK_HOME = "<你的 DevEco SDK 路径>"
 $env:JAVA_HOME = "<DevEco 自带 jbr 路径>"
 ```
 
+## 签名配置
+
+仓库里**不包含任何签名材料**（证书、私钥、口令都不在版本库里）。`build-profile.json5` 的 `signingConfigs` 是空数组。
+
+要装到真机，你需要自己生成签名：
+
+1. DevEco Studio → `File → Project Structure → Signing Configs`
+2. 勾选「Automatically generate signature」（需登录华为账号）
+3. 生成后再构建，产物是 `entry-default-signed.hap`
+
+这样每台机器的签名各自独立，仓库保持干净。
+
 ## 目录
 
 ```
