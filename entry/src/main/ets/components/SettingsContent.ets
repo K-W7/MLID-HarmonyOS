@@ -108,7 +108,7 @@ export struct SettingsContent {
   private lastMood: number = 0;
 
   private refreshTint(): void {
-    const next = currentTint(getContext(this) as common.UIAbilityContext);
+    const next = currentTint(this.getUIContext().getHostContext() as common.UIAbilityContext);
     // 主题切换留 1.2s 过渡：直接赋值会硬切，观感很生硬
     this.getUIContext().animateTo({ duration: 1200, curve: Curve.EaseInOut }, () => {
       this.tint = next;
@@ -117,7 +117,7 @@ export struct SettingsContent {
 
   aboutToAppear(): void {
     this.refreshTint();
-    this.envWatchId = watchColorMode(getContext(this) as common.UIAbilityContext, () => {
+    this.envWatchId = watchColorMode(this.getUIContext().getHostContext() as common.UIAbilityContext, () => {
       this.refreshTint();
     });
     this.loadData();
@@ -146,7 +146,7 @@ export struct SettingsContent {
   }
 
   aboutToDisappear(): void {
-    stopWatchColorMode(getContext(this) as common.UIAbilityContext, this.envWatchId);
+    stopWatchColorMode(this.getUIContext().getHostContext() as common.UIAbilityContext, this.envWatchId);
     this.envWatchId = -1;
   }
 
@@ -385,7 +385,7 @@ export struct SettingsContent {
   }
 
   private async loadData(): Promise<void> {
-    const context = getContext(this) as common.UIAbilityContext;
+    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     await appStore.init(context);
     this.syncFromStore();
     // 内容淡入，避免整块设置项生硬出现
@@ -404,7 +404,7 @@ export struct SettingsContent {
     this.reminderId = settings.reminderId;
     this.lastMood = settings.lastMood;
     this.recordCount = appStore.records.length;
-    const context = getContext(this) as common.UIAbilityContext;
+    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     applyTheme(context, settings);
   }
 
@@ -424,7 +424,7 @@ export struct SettingsContent {
       lookbackOrder: this.lookbackOrder
     };
     await appStore.updateSettings(next);
-    const context = getContext(this) as common.UIAbilityContext;
+    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     applyTheme(context, next);
   }
 
@@ -484,7 +484,7 @@ export struct SettingsContent {
       return;
     }
     this.busy = true;
-    const context = getContext(this) as common.UIAbilityContext;
+    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     const ok = await exportAll(context, appStore.records);
     this.busy = false;
     this.toast(ok ? '导出好了。' : '这次没导出成，稍后再试试。');
@@ -495,7 +495,7 @@ export struct SettingsContent {
       return;
     }
     this.busy = true;
-    const context = getContext(this) as common.UIAbilityContext;
+    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     const ok = await exportAll(context, appStore.records, password);
     this.busy = false;
     this.toast(ok ? '加密备份导出好了。' : '这次没导出成，稍后再试试。');
@@ -506,7 +506,7 @@ export struct SettingsContent {
       return;
     }
     this.busy = true;
-    const context = getContext(this) as common.UIAbilityContext;
+    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     try {
       // 文件只选一次：加密备份先记住这个文件，弹密码框后直接用同一个文件导入
       const picked = await pickBackup(context);
@@ -520,6 +520,9 @@ export struct SettingsContent {
         this.importPanelVisible = true;
         return;
       }
+      // 选完文件后必须释放 busy：performImport 自己会加锁，
+      // 否则它第一行的 busy 判断会把自己挡在门外，导入被静默跳过
+      this.busy = false;
       await this.performImport(context, picked, '');
     } catch (e) {
       this.busy = false;
@@ -533,7 +536,7 @@ export struct SettingsContent {
     if (picked === null) {
       return;
     }
-    const context = getContext(this) as common.UIAbilityContext;
+    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     await this.performImport(context, picked, password);
   }
 
@@ -648,7 +651,7 @@ export struct SettingsContent {
 
   // 重置后必须离开设置页回到启动页：页面级跳转，保留 router 调用（Navigation 下可换 clear/pop 到根）
   private async performReset(): Promise<void> {
-    const context = getContext(this) as common.UIAbilityContext;
+    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     await appStore.resetAll();
     this.recordCount = 0;
     router.replaceUrl({ url: 'pages/SplashPage' });
