@@ -1040,6 +1040,8 @@ struct CalendarPage {
     // 子页返回时重算色温：在设置里换了深浅色，回主页立刻生效
     .onDisAppear(() => {
       this.applyTodayTint();
+      // 子页里可能新增/导入了记录，返回时必须重算区块，否则界面还是旧数据
+      this.computeVisibleSections();
     })
   }
 

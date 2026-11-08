@@ -580,6 +580,8 @@ export struct SettingsContent {
         primaryButton: {
           value: '好',
           action: () => {
+            // 导入后直接回主页，让新记录立刻出现在日历上
+            this.onBack();
           }
         }
       });
