@@ -1,0 +1,176 @@
+{
+  "float": [
+    {
+      "name": "font_logo",
+      "value": "44fp"
+    },
+    {
+      "name": "font_date_large",
+      "value": "28fp"
+    },
+    {
+      "name": "font_title",
+      "value": "22fp"
+    },
+    {
+      "name": "font_body",
+      "value": "16fp"
+    },
+    {
+      "name": "font_body_small",
+      "value": "14fp"
+    },
+    {
+      "name": "font_meta",
+      "value": "13fp"
+    },
+    {
+      "name": "font_meta_small",
+      "value": "12fp"
+    },
+    {
+      "name": "font_lunar_cell",
+      "value": "10fp"
+    },
+    {
+      "name": "font_micro",
+      "value": "10fp"
+    },
+    {
+      "name": "font_cell_day",
+      "value": "17fp"
+    },
+    {
+      "name": "line_body",
+      "value": "26vp"
+    },
+    {
+      "name": "line_body_small",
+      "value": "22vp"
+    },
+    {
+      "name": "radius_card",
+      "value": "16vp"
+    },
+    {
+      "name": "radius_dock",
+      "value": "28vp"
+    },
+    {
+      "name": "radius_input",
+      "value": "22vp"
+    },
+    {
+      "name": "radius_chip",
+      "value": "999vp"
+    },
+    {
+      "name": "radius_image",
+      "value": "12vp"
+    },
+    {
+      "name": "radius_today_ring",
+      "value": "10vp"
+    },
+    {
+      "name": "radius_sheet",
+      "value": "24vp"
+    },
+    {
+      "name": "radius_button",
+      "value": "22vp"
+    },
+    {
+      "name": "space_page_h",
+      "value": "20vp"
+    },
+    {
+      "name": "space_card_pad",
+      "value": "16vp"
+    },
+    {
+      "name": "space_card_gap",
+      "value": "12vp"
+    },
+    {
+      "name": "space_dock_pad",
+      "value": "12vp"
+    },
+    {
+      "name": "space_chip_gap",
+      "value": "8vp"
+    },
+    {
+      "name": "space_header_top",
+      "value": "24vp"
+    },
+    {
+      "name": "space_header_safe",
+      "value": "52vp"
+    },
+    {
+      "name": "space_section_gap",
+      "value": "24vp"
+    },
+    {
+      "name": "icon_size",
+      "value": "20vp"
+    },
+    {
+      "name": "icon_touch",
+      "value": "44vp"
+    },
+    {
+      "name": "cell_height",
+      "value": "60vp"
+    },
+    {
+      "name": "glow_size",
+      "value": "40vp"
+    },
+    {
+      "name": "space_dock_bottom",
+      "value": "12vp"
+    },
+    {
+      "name": "dock_height",
+      "value": "64vp"
+    },
+    {
+      "name": "chip_height",
+      "value": "44vp"
+    },
+    {
+      "name": "chip_bar_height",
+      "value": "52vp"
+    },
+    {
+      "name": "image_thumb",
+      "value": "56vp"
+    },
+    {
+      "name": "image_card_h",
+      "value": "72vp"
+    },
+    {
+      "name": "image_quote",
+      "value": "40vp"
+    },
+    {
+      "name": "swipe_action_w",
+      "value": "70vp"
+    },
+    {
+      "name": "swipe_total_w",
+      "value": "140vp"
+    },
+    {
+      "name": "header_height",
+      "value": "56vp"
+    },
+    {
+      "name": "empty_min_height",
+      "value": "200vp"
+    }
+  ]
+}

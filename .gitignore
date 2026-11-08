@@ -1,0 +1,33 @@
+/node_modules
+/oh_modules
+/local.properties
+/.idea
+**/build
+/.hvigor
+.cxx
+/.clangd
+/.clang-format
+/.clang-tidy
+**/.test
+/.appanalyzer
+
+# 构建产物与工具缓存
+/.codegenie
+/.preview
+/.idea
+*.hap
+*.app
+*.hsp
+
+# 签名材料（绝对不能进仓库）
+*.p12
+*.cer
+*.p7b
+*.jks
+*.keystore
+signature/
+
+# 本地/私人数据
+local.properties
+_removed-*
+*测试备份*

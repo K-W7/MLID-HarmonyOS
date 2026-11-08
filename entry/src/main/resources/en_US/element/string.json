@@ -1,0 +1,96 @@
+{
+  "string": [
+    {
+      "name": "app_name",
+      "value": "Shixu"
+    },
+    {
+      "name": "app_slogan",
+      "value": "A quiet journal that breathes"
+    },
+    {
+      "name": "placeholder_input",
+      "value": "Write something…"
+    },
+    {
+      "name": "action_save",
+      "value": "Save"
+    },
+    {
+      "name": "action_delete",
+      "value": "Delete"
+    },
+    {
+      "name": "action_quote",
+      "value": "Quote"
+    },
+    {
+      "name": "action_edit",
+      "value": "Edit"
+    },
+    {
+      "name": "action_cancel",
+      "value": "Cancel"
+    },
+    {
+      "name": "nav_back",
+      "value": "Back"
+    },
+    {
+      "name": "settings_title",
+      "value": "Settings"
+    },
+    {
+      "name": "privacy_text",
+      "value": "Shixu does not request network access—your data stays on this device. Photos are chosen through the system picker, so we don't access your photo library."
+    },
+    {
+      "name": "privacy_consent_title",
+      "value": "Welcome to Shixu"
+    },
+    {
+      "name": "privacy_consent_body",
+      "value": "Shixu is a quiet space for you. We don't request network access—your data stays on this device. Photos are chosen through the system picker, so we don't access your photo library."
+    },
+    {
+      "name": "privacy_consent_policy_link",
+      "value": "View Privacy Policy"
+    },
+    {
+      "name": "privacy_consent_disagree",
+      "value": "Not Now and Exit"
+    },
+    {
+      "name": "privacy_consent_agree",
+      "value": "Agree"
+    },
+    {
+      "name": "privacy_page_title",
+      "value": "Privacy Policy"
+    },
+    {
+      "name": "privacy_policy_updated",
+      "value": "Last updated: October 30, 2026　Version: 1"
+    },
+    {
+      "name": "privacy_policy_body",
+      "value": "Shixu is a personal journaling app that runs entirely on your device. We respect your writing and your privacy, and handle information as follows:\n\n1. Storage: Your text, moods, images, and settings stay in the app's private storage on this device. We provide no accounts and no cloud sync.\n\n2. Network and tracking: Shixu requests no network access and contains no third-party SDKs, advertising, or behavioural analytics. Your entries are never uploaded.\n\n3. System backup: App data is excluded from system cloud backup and device migration, so your entries are not uploaded to the cloud by the operating system.\n\n4. Photos: Images are picked through the system photo picker, so you choose exactly what is imported and we never request full photo library access. Images are compressed and stored locally after location and other metadata are stripped.\n\n5. Notifications: Only after you enable the evening reminder does Shixu request notification permission and create a local reminder. You can turn it off at any time.\n\n6. Import and export: Backups are read or written only when you start the action, through the system file picker. A standard backup can be read by anyone who obtains the file; a forgotten password cannot be recovered. Importing merges records and never overwrites existing ones.\n\n7. Deletion: You can delete individual entries or clear all records in Settings; resetting also removes reminders and settings. Backups you exported elsewhere are unaffected.\n\n8. Retention: Data stays on your device until you delete it or uninstall the app. We keep no copy anywhere else.\n\n9. Minors: If you are under 14, please use this app under the guidance of a guardian.\n\n10. Contact: to be filled (developer email / app market developer page)."
+    },
+    {
+      "name": "privacy_save_failed",
+      "value": "Settings weren't saved. Please try again."
+    },
+    {
+      "name": "future_day_empty",
+      "value": "This day hasn't arrived yet."
+    },
+    {
+      "name": "backfill_tag",
+      "value": "Added later"
+    },
+    {
+      "name": "draft_restored",
+      "value": "Restored your unsent draft"
+    }
+  ]
+}

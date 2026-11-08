@@ -1,0 +1,144 @@
+{
+  "color": [
+    {
+      "name": "bg_gradient_end",
+      "value": "#ECE4D6"
+    },
+    {
+      "name": "today_circle",
+      "value": "#1FA8823A"
+    },
+    {
+      "name": "start_window_background",
+      "value": "#FAF6F0"
+    },
+    {
+      "name": "bg_page",
+      "value": "#F5F0EC"
+    },
+    {
+      "name": "bg_card",
+      "value": "#FBF7F1"
+    },
+    {
+      "name": "text_primary",
+      "value": "#30281D"
+    },
+    {
+      "name": "text_secondary",
+      "value": "#89827C"
+    },
+    {
+      "name": "text_placeholder",
+      "value": "#B3ADA3"
+    },
+    {
+      "name": "accent_glow",
+      "value": "#A8823A"
+    },
+    {
+      "name": "danger_low_sat",
+      "value": "#C25B4E"
+    },
+    {
+      "name": "shadow_card",
+      "value": "#14000000"
+    },
+    {
+      "name": "shadow_dock",
+      "value": "#0A000000"
+    },
+    {
+      "name": "brand_primary",
+      "value": "#5B8C8C"
+    },
+    {
+      "name": "mood_none",
+      "value": "#89827C"
+    },
+    {
+      "name": "mood_happy",
+      "value": "#A8823A"
+    },
+    {
+      "name": "mood_calm",
+      "value": "#7E8C78"
+    },
+    {
+      "name": "mood_tired",
+      "value": "#8A8C8A"
+    },
+    {
+      "name": "mood_irritable",
+      "value": "#A05C46"
+    },
+    {
+      "name": "mood_low",
+      "value": "#8A7565"
+    },
+    {
+      "name": "glow_center",
+      "value": "#B3E8C87A"
+    },
+    {
+      "name": "glow_edge",
+      "value": "#00E8C87A"
+    },
+    {
+      "name": "today_ring_bg",
+      "value": "#1AA8823A"
+    },
+    {
+      "name": "overlay_scrim",
+      "value": "#66000000"
+    },
+    {
+      "name": "quote_bg",
+      "value": "#F0EADF"
+    },
+    {
+      "name": "chip_border",
+      "value": "#DFD7C8"
+    },
+    {
+      "name": "button_secondary_bg",
+      "value": "#ECE6DA"
+    },
+    {
+      "name": "toast_bg",
+      "value": "#E62A2620"
+    },
+    {
+      "name": "white",
+      "value": "#FFFFFF"
+    },
+    {
+      "name": "transparent",
+      "value": "#00000000"
+    },
+    {
+      "name": "material_tint",
+      "value": "#14F0E0C8"
+    },
+    {
+      "name": "splash_top",
+      "value": "#F0E9DC"
+    },
+    {
+      "name": "splash_bottom",
+      "value": "#E2D8C6"
+    },
+    {
+      "name": "section_gold",
+      "value": "#A8823A"
+    },
+    {
+      "name": "section_sage",
+      "value": "#7E8C78"
+    },
+    {
+      "name": "section_clay",
+      "value": "#A05C46"
+    }
+  ]
+}
