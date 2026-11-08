@@ -1039,6 +1039,10 @@ struct CalendarPage {
     .systemBarStyle({ statusBarContentColor: this.statusIconColor() })
     // 子页返回时重算色温：在设置里换了深浅色，回主页立刻生效
     .onDisAppear(() => {
+      // 子页里可能新增/导入了记录：色温、随机池、区块都要重算，否则只有重启才更新
+      this.pickRandomRecord();
+      this.buildRandomStack();
+      this.computeVisibleSections();
       this.applyTodayTint();
     })
   }

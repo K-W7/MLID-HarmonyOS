@@ -1,4 +1,5 @@
 import { fileIo as fs, picker } from '@kit.CoreFileKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 import { zlib } from '@kit.BasicServicesKit';
 import { ImportResult, QuoteRef, RecordItem } from '../model/RecordItem';
 import { Mood } from '../model/Mood';
@@ -9,6 +10,8 @@ interface RawRecord {
   id?: string;
   timestamp?: number;
   date?: string;
+  /** 我们自己的导出用 dateKey；导入时也要认，否则会全落到未归档 */
+  dateKey?: string;
   content?: string;
   text?: string;
   moods?: number[];
@@ -322,6 +325,21 @@ function normalizeRecord(raw: RawRecord, imageMap: Map<string, string>): RecordI
     moods: moods,
     images: images
   };
+  // 备份里的自然日：dateKey（自家导出）> date（外部/旧格式）> 时间戳推算
+  let dateKey = '';
+  if (raw.dateKey !== undefined && String(raw.dateKey) !== '') {
+    dateKey = String(raw.dateKey);
+  } else if (raw.date !== undefined && String(raw.date) !== '') {
+    const d = parseDateFromText(String(raw.date));
+    if (d !== null) {
+      dateKey = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+  }
+  if (dateKey === '') {
+    const d = new Date(timestamp);
+    dateKey = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+  item.dateKey = dateKey;
   if (raw.parentId !== undefined && String(raw.parentId) !== '') {
     item.parentId = String(raw.parentId);
   }
@@ -456,8 +474,17 @@ export async function pickBackup(context: Context): Promise<PickedBackup | null>
   const options = new picker.DocumentSelectOptions();
   options.maxSelectNumber = 1;
   options.fileSuffixFilters = ['.json', '.txt', '.md', '.zip', ENCRYPTED_SUFFIX];
-  const uris = await documentPicker.select(options);
+  hilog.info(0x0000, 'MLIDImport', 'pick: before select');
+  let uris: string[] = [];
+  try {
+    uris = await documentPicker.select(options);
+    hilog.info(0x0000, 'MLIDImport', `pick: uris=${uris.length} ${JSON.stringify(uris)}`);
+  } catch (e) {
+    hilog.error(0x0000, 'MLIDImport', `pick: select threw ${(e as Error)?.message ?? JSON.stringify(e)}`);
+    return null;
+  }
   if (uris.length === 0) {
+    hilog.warn(0x0000, 'MLIDImport', 'pick: cancelled or denied');
     return null;
   }
   const uri = uris[0];
@@ -475,7 +502,9 @@ export async function importBackup(context: Context, picked: PickedBackup, exist
   let rawList: RawRecord[] = [];
 
   try {
+    hilog.info(0x0000, 'MLIDImport', `start uri=${uri} name=${fileName}`);
     copyUriToPath(uri, cachePath);
+    hilog.info(0x0000, 'MLIDImport', `copied size=${fs.statSync(cachePath).size}`);
 
     // 加密容器先解出 ZIP 再走原流程；密码缺失或认证失败都不进入数据库
     let archivePath = cachePath;
@@ -502,6 +531,7 @@ export async function importBackup(context: Context, picked: PickedBackup, exist
       const unzipOptions: zlib.Options = {};
       await zlib.decompressFile(archivePath, outDir, unzipOptions);
       const jsonPath = findNamedEntry(outDir, 'records.json');
+      hilog.info(0x0000, 'MLIDImport', `unzipped jsonPath=${jsonPath}`);
       if (jsonPath !== '') {
         rawList = parseJsonRecords(fs.readTextSync(jsonPath));
       }
@@ -515,11 +545,14 @@ export async function importBackup(context: Context, picked: PickedBackup, exist
       }
     } else {
       const text = fs.readTextSync(cachePath);
+      hilog.info(0x0000, 'MLIDImport', `text len=${text.length} suffix json=${lower.endsWith('.json')}`);
       if (lower.endsWith('.json')) {
         try {
           rawList = parseJsonRecords(text);
+          hilog.info(0x0000, 'MLIDImport', `parsed=${rawList.length}`);
         } catch (e) {
           rawList = [];
+          hilog.error(0x0000, 'MLIDImport', `parse fail ${JSON.stringify(e)}`);
         }
       }
       if (rawList.length === 0) {
@@ -546,6 +579,7 @@ export async function importBackup(context: Context, picked: PickedBackup, exist
       }
     }
   } catch (e) {
+    hilog.error(0x0000, 'MLIDImport', `thrown ${(e as Error)?.message ?? JSON.stringify(e)}`);
     return null;
   } finally {
     try {
@@ -557,7 +591,10 @@ export async function importBackup(context: Context, picked: PickedBackup, exist
     }
   }
 
-  return mergeImport(rawList, imageMap, existing);
+  hilog.info(0x0000, 'MLIDImport', `raw=${rawList.length} existing=${existing.length}`);
+  const outcome = mergeImport(rawList, imageMap, existing);
+  hilog.info(0x0000, 'MLIDImport', `merge result=${outcome.result} total=${outcome.records.length}`);
+  return outcome;
 }
 
 /** 兼容旧调用：先选文件再导入；需要密码时返回 null，错误码从 takeImportError() 取 */
