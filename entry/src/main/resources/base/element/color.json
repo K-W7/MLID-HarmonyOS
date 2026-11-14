@@ -58,23 +58,23 @@
     },
     {
       "name": "mood_happy",
-      "value": "#A8823A"
+      "value": "#C2872B"
     },
     {
       "name": "mood_calm",
-      "value": "#7E8C78"
+      "value": "#5F8A6B"
     },
     {
       "name": "mood_tired",
-      "value": "#8A8C8A"
+      "value": "#7E7AA0"
     },
     {
       "name": "mood_irritable",
-      "value": "#A05C46"
+      "value": "#C0563A"
     },
     {
       "name": "mood_low",
-      "value": "#8A7565"
+      "value": "#54779E"
     },
     {
       "name": "glow_center",
