@@ -1069,10 +1069,11 @@ struct CalendarPage {
     .systemBarStyle({ statusBarContentColor: this.statusIconColor() })
     // 子页返回时重算色温：在设置里换了深浅色，回主页立刻生效
     .onDisAppear(() => {
-      // 子页里可能新增/导入了记录：色温、随机池、区块都要重算，否则只有重启才更新
+      // 只做不改变内容的刷新：跨天对表、色温、区块可见性。
+      // 不在这里重抽「随机一条」——只点开某天再返回，卡片不该自己变一次、更不该重播动画
+      // （2026-11-14 用户报「点 13 号，随机一条像在自动播放」，根因就是这里的重抽 + 重建）。
+      // 新增/删除/导入记录会走 onDataChanged → loadData → refreshInfoFlow，那里才重抽。
       this.checkDayRollover();
-      this.pickRandomRecord();
-      this.buildRandomStack();
       this.computeVisibleSections();
       this.applyTodayTint();
     })
