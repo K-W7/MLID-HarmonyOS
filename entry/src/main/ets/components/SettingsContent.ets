@@ -1,5 +1,5 @@
 import { router } from '@kit.ArkUI';
-import { common } from '@kit.AbilityKit';
+import { bundleManager, common } from '@kit.AbilityKit';
 import {
   AppSettings,
   DEFAULT_MOOD_LAST,
@@ -27,7 +27,23 @@ const THEME_OPTIONS: ThemeOption[] = [
   { value: THEME_DARK, label: '深色' }
 ];
 
-const APP_VERSION: string = '1.3.0';
+const APP_VERSION: string = '1.3.1';
+
+/**
+ * 版本号从包信息里读，别写死：写死过一次，1.3.1 装到手机上「关于」还显示 1.3.0
+ * （2026-11-14 用户发现）。读不到才回落到上面的常量。
+ */
+function resolveAppVersion(): string {
+  try {
+    const info = bundleManager.getBundleInfoForSelfSync(bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT);
+    if (info.versionName !== '') {
+      return info.versionName;
+    }
+  } catch (e) {
+    // 读不到包信息就用常量兜底，别让设置页崩
+  }
+  return APP_VERSION;
+}
 
 @ComponentV2
 struct SettingRow {
@@ -297,7 +313,7 @@ export struct SettingsContent {
           Column() {
             SettingRow({
               title: '版本',
-              value: APP_VERSION
+              value: resolveAppVersion()
             })
 
             SettingRow({
