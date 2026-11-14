@@ -37,24 +37,24 @@ const TINTS: Map<Mood, TintPair> = new Map<Mood, TintPair>([
     darkTop: '#141311', darkBottom: '#0A0A09', darkAccent: '#9A9288'
   }],
   [Mood.CALM, {
-    lightTop: '#F1F3EC', lightBottom: '#E6EADF', lightAccent: '#6F8F6C',
-    darkTop: '#111613', darkBottom: '#090C0A', darkAccent: '#8FA98C'
+    lightTop: '#F0F3EC', lightBottom: '#E4EADF', lightAccent: '#5F8A6B',
+    darkTop: '#111613', darkBottom: '#090C0A', darkAccent: '#8CB79A'
   }],
   [Mood.HAPPY, {
-    lightTop: '#F7F1E7', lightBottom: '#EEE3D1', lightAccent: '#B8862E',
-    darkTop: '#171411', darkBottom: '#0B0908', darkAccent: '#C0914F'
+    lightTop: '#F8F2E6', lightBottom: '#EEE3D2', lightAccent: '#C2872B',
+    darkTop: '#171411', darkBottom: '#0B0908', darkAccent: '#E3AE55'
   }],
   [Mood.TIRED, {
-    lightTop: '#F2F2F3', lightBottom: '#E7E8EA', lightAccent: '#7D8A8A',
-    darkTop: '#121416', darkBottom: '#08090B', darkAccent: '#9AA3A0'
+    lightTop: '#F3F2F5', lightBottom: '#E8E6EC', lightAccent: '#7E7AA0',
+    darkTop: '#131216', darkBottom: '#09080B', darkAccent: '#A9A2C9'
   }],
   [Mood.IRRITABLE, {
-    lightTop: '#F7EFEB', lightBottom: '#EFE0D9', lightAccent: '#A85A40',
-    darkTop: '#171211', darkBottom: '#0B0807', darkAccent: '#B4654A'
+    lightTop: '#F8EFEA', lightBottom: '#F0E0D8', lightAccent: '#C0563A',
+    darkTop: '#171210', darkBottom: '#0B0807', darkAccent: '#DA7B58'
   }],
   [Mood.LOW, {
-    lightTop: '#F4F1ED', lightBottom: '#E9E3DC', lightAccent: '#857768',
-    darkTop: '#151312', darkBottom: '#090807', darkAccent: '#8C7A68'
+    lightTop: '#F1F3F6', lightBottom: '#E4E8ED', lightAccent: '#54779E',
+    darkTop: '#111417', darkBottom: '#08090B', darkAccent: '#82A0C4'
   }]
 ]);
 
