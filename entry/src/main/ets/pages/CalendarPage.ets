@@ -16,7 +16,7 @@ import { RecordItem } from '../model/RecordItem';
 import { AppSettings } from '../model/AppSettings';
 import { Mood } from '../model/Mood';
 import { BreathingConfig, getBreathingConfig, getMoodColor } from '../model/MoodMeta';
-import { appStore, dateKeyOf } from '../store/AppStore';
+import { appStore, dateKeyOf, itemDayKey, todayKey } from '../store/AppStore';
 import { applyTheme } from '../utils/ThemeUtil';
 import { thinMaterial, ultraThinMaterial } from '../utils/MaterialUtil';
 import { CalendarCell } from '../components/CalendarCell';
@@ -66,11 +66,6 @@ function pad2(value: number): string {
   return value < 10 ? `0${value}` : `${value}`;
 }
 
-function isSameDay(timestamp: number, year: number, month: number, day: number): boolean {
-  const date = new Date(timestamp);
-  return date.getFullYear() === year && date.getMonth() + 1 === month && date.getDate() === day;
-}
-
 @Entry
 @ComponentV2
 struct CalendarPage {
@@ -109,6 +104,9 @@ struct CalendarPage {
   // 主题变化监听 + 色温缓存（回调里刷新，实现秒切）
   private envWatchId: number = -1;
   private pathStack: NavPathStack = new NavPathStack();
+  // 跨午夜跟随：记着页面认为的「今天」，每 30 秒对一次表
+  private todayKeySeen: string = todayKey();
+  private midnightTimer: number = -1;
 
   private refreshTint(): void {
     const next = currentTint(getContext(this) as common.UIAbilityContext);
@@ -126,12 +124,42 @@ struct CalendarPage {
     this.monthPages = this.buildPagesAround(this.year, this.month, 1);
     this.activePage = 1;
     this.loadData();
+    this.todayKeySeen = todayKey();
+    this.midnightTimer = setInterval(() => {
+      this.checkDayRollover();
+    }, 30000);
   }
 
   onPageShow(): void {
     // 不再在这里全量 loadData：从其它应用切回会触发 onPageShow，
     // 全量重载会让回望区在恢复过程中被整体重建，看起来是“下半部分跳出来”。
     // 应用内数据变化由 JournalContent 的 onDataChanged 回调推送；进程重启由 aboutToAppear 负责。
+    // 但跨午夜必须跟随：切回前台时对一次表。
+    this.checkDayRollover();
+  }
+
+  /** 跨午夜跟随：应用一直开着、或从后台切回来时，把「今天」滚到新的一天 */
+  private checkDayRollover(): void {
+    const key = todayKey();
+    if (key === this.todayKeySeen) {
+      return;
+    }
+    const prevParts = this.todayKeySeen.split('-');
+    this.todayKeySeen = key;
+    if (prevParts.length === 3) {
+      const prevYear = Number(prevParts[0]);
+      const prevMonth = Number(prevParts[1]);
+      // 只有正停在「上一个今天」所在月时才跟着滚；用户翻旧月份就别打断
+      if (this.year === prevYear && this.month === prevMonth) {
+        const now = new Date();
+        this.year = now.getFullYear();
+        this.month = now.getMonth() + 1;
+        this.selectedDay = now.getDate();
+        this.monthPages = this.buildPagesAround(this.year, this.month, 1);
+        this.activePage = 1;
+      }
+    }
+    this.loadData();
   }
 
   @Builder
@@ -215,8 +243,7 @@ struct CalendarPage {
     const all = appStore.records;
     let count = 0;
     for (let i = 0; i < all.length; i++) {
-      const date = new Date(all[i].timestamp);
-      if (dateKeyOf(date.getFullYear(), date.getMonth() + 1, date.getDate()) === key) {
+      if (itemDayKey(all[i]) === key) {
         count++;
       }
     }
@@ -345,7 +372,7 @@ struct CalendarPage {
   recordCard(item: RecordItem) {
     Column({ space: 8 }) {
       Row() {
-        Text(this.recordMetaText(item.timestamp))
+        Text(this.recordMetaText(item))
           .fontSize($r('app.float.font_meta_small'))
           .fontColor($r('app.color.text_secondary'))
         Blank()
@@ -569,6 +596,10 @@ struct CalendarPage {
   aboutToDisappear(): void {
     stopWatchColorMode(getContext(this) as common.UIAbilityContext, this.envWatchId);
     this.envWatchId = -1;
+    if (this.midnightTimer >= 0) {
+      clearInterval(this.midnightTimer);
+      this.midnightTimer = -1;
+    }
   }
 
   build() {
@@ -813,10 +844,10 @@ struct CalendarPage {
     const all = appStore.records;
     for (let i = 0; i < all.length; i++) {
       const item = all[i];
-      const date = new Date(item.timestamp);
-      if (date.getFullYear() < todayYear &&
-        date.getMonth() + 1 === todayMonth &&
-        date.getDate() === todayDay) {
+      // 「往年今日」按业务日算：dateKey 的年月日，而不是时间戳那天
+      const parts = itemDayKey(item).split('-');
+      if (parts.length === 3 && Number(parts[0]) < todayYear &&
+        Number(parts[1]) === todayMonth && Number(parts[2]) === todayDay) {
         past.push(item);
       }
     }
@@ -906,11 +937,10 @@ struct CalendarPage {
       return;
     }
 
-    const now = new Date();
     const candidates: RecordItem[] = [];
     for (let i = 0; i < all.length; i++) {
       const item = all[i];
-      if (!isSameDay(item.timestamp, now.getFullYear(), now.getMonth() + 1, now.getDate())) {
+      if (itemDayKey(item) !== todayKey()) {
         candidates.push(item);
       }
     }
@@ -1039,32 +1069,41 @@ struct CalendarPage {
     .systemBarStyle({ statusBarContentColor: this.statusIconColor() })
     // 子页返回时重算色温：在设置里换了深浅色，回主页立刻生效
     .onDisAppear(() => {
-      // 子页里可能新增/导入了记录：色温、随机池、区块都要重算，否则只有重启才更新
-      this.pickRandomRecord();
-      this.buildRandomStack();
+      // 只做不改变内容的刷新：跨天对表、色温、区块可见性。
+      // 不在这里重抽「随机一条」——只点开某天再返回，卡片不该自己变一次、更不该重播动画
+      // （2026-11-14 用户报「点 13 号，随机一条像在自动播放」，根因就是这里的重抽 + 重建）。
+      // 新增/删除/导入记录会走 onDataChanged → loadData → refreshInfoFlow，那里才重抽。
+      this.checkDayRollover();
       this.computeVisibleSections();
       this.applyTodayTint();
     })
   }
 
   private openRecord(item: RecordItem): void {
-    const date = new Date(item.timestamp);
+    // 打开这条记录所属的那一天：按业务日，不按写入时刻
+    const parts = itemDayKey(item).split('-');
+    if (parts.length !== 3) {
+      return;
+    }
     const param: DayParam = {
-      year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate()
+      year: Number(parts[0]), month: Number(parts[1]), day: Number(parts[2])
     };
     this.pathStack.pushPathByName('day', param);
   }
 
-  private recordMetaText(timestamp: number): string {
-    const date = new Date(timestamp);
-    const now = new Date();
+  private recordMetaText(item: RecordItem): string {
+    // 日期取业务日，时间取真实写入时刻
+    const date = new Date(item.timestamp);
     const time = `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
-    if (date.getFullYear() === now.getFullYear() &&
-      date.getMonth() === now.getMonth() &&
-      date.getDate() === now.getDate()) {
+    const key = itemDayKey(item);
+    if (key === todayKey()) {
       return time;
     }
-    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${time}`;
+    const parts = key.split('-');
+    if (parts.length !== 3) {
+      return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${time}`;
+    }
+    return `${Number(parts[0])}年${Number(parts[1])}月${Number(parts[2])}日 ${time}`;
   }
 
   private recordPreview(item: RecordItem): string {

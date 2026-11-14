@@ -1,5 +1,6 @@
 import { common } from '@kit.AbilityKit';
 import { RecordItem } from '../model/RecordItem';
+import { itemDayKey } from '../store/AppStore';
 import { resolveImageUri } from '../utils/ImageStore';
 import { curves } from '@kit.ArkUI';
 import { motionDuration } from '../utils/MotionUtil';
@@ -80,7 +81,7 @@ export struct CardStack {
   card(item: RecordItem, offset: number) {
     // 所有卡片固定同样的高度；时间单独占顶部一行，正文放大一档
     Column({ space: 10 }) {
-      Text(this.metaText(item.timestamp))
+      Text(this.metaText(item))
         .width('100%')
         .fontSize($r('app.float.font_meta_small'))
         .fontColor($r('app.color.text_secondary'))
@@ -190,10 +191,15 @@ export struct CardStack {
     return value < 10 ? `0${value}` : `${value}`;
   }
 
-  private metaText(timestamp: number): string {
-    const date = new Date(timestamp);
-    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${this.pad(date.getHours())}:${this.pad(
-      date.getMinutes())}`;
+  private metaText(item: RecordItem): string {
+    // 日期取业务日（dateKey），时间取真实写入时刻：补记的卡片不会再把日期写成「写的那天」
+    const date = new Date(item.timestamp);
+    const key = itemDayKey(item);
+    const parts = key.split('-');
+    const year = parts.length === 3 ? Number(parts[0]) : date.getFullYear();
+    const month = parts.length === 3 ? Number(parts[1]) : date.getMonth() + 1;
+    const day = parts.length === 3 ? Number(parts[2]) : date.getDate();
+    return `${year}年${month}月${day}日 ${this.pad(date.getHours())}:${this.pad(date.getMinutes())}`;
   }
 
   private preview(item: RecordItem): string {
