@@ -16,17 +16,14 @@ function newId(): string {
   return `${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
 }
 
-function sameDay(timestamp: number, year: number, month: number, day: number): boolean {
-  const d = new Date(timestamp);
-  return d.getFullYear() === year && d.getMonth() + 1 === month && d.getDate() === day;
-}
-
-function timestampOfDate(year: number, month: number, day: number): number {
-  const now = new Date();
-  if (now.getFullYear() === year && now.getMonth() + 1 === month && now.getDate() === day) {
-    return now.getTime();
+/** 记录的归属自然日（业务日）：以 dateKey 为准，缺失时按 timestamp 推（老数据兜底） */
+export function itemDayKey(item: RecordItem): string {
+  const key = item.dateKey;
+  if (key !== undefined && key !== '') {
+    return key;
   }
-  return new Date(year, month - 1, day, 21, 0, 0).getTime();
+  const d = new Date(item.timestamp);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
 function cloneMoods(moods: Mood[]): Mood[] {
@@ -210,10 +207,11 @@ export class AppStore {
   }
 
   getRecordsForDate(year: number, month: number, day: number): RecordItem[] {
+    const key = dateKeyOf(year, month, day);
     const list: RecordItem[] = [];
     for (let i = 0; i < this.records.length; i++) {
       const item = this.records[i];
-      if (sameDay(item.timestamp, year, month, day)) {
+      if (itemDayKey(item) === key) {
         list.push(item);
       }
     }
@@ -222,10 +220,11 @@ export class AppStore {
   }
 
   getMoodsForDate(year: number, month: number, day: number): Mood[] {
+    const key = dateKeyOf(year, month, day);
     const moods: Mood[] = [];
     for (let i = 0; i < this.records.length; i++) {
       const item = this.records[i];
-      if (!sameDay(item.timestamp, year, month, day)) {
+      if (itemDayKey(item) !== key) {
         continue;
       }
       for (let j = 0; j < item.moods.length; j++) {
@@ -238,8 +237,9 @@ export class AppStore {
   }
 
   hasRecordsOn(year: number, month: number, day: number): boolean {
+    const key = dateKeyOf(year, month, day);
     for (let i = 0; i < this.records.length; i++) {
-      if (sameDay(this.records[i].timestamp, year, month, day)) {
+      if (itemDayKey(this.records[i]) === key) {
         return true;
       }
     }
@@ -269,7 +269,8 @@ export class AppStore {
     const key = dateKeyOf(year, month, day);
     const item: RecordItem = {
       id: newId(),
-      timestamp: timestampOfDate(year, month, day),
+      // 时间戳永远是真实写入时刻；归属哪一天由 dateKey 决定（补记不会再把时间写成 21:00）
+      timestamp: Date.now(),
       dateKey: key,
       isBackfill: key < todayKey(),
       content: payload.content.trim(),
@@ -350,7 +351,7 @@ export class AppStore {
     const key = dateKeyOf(year, month, day);
     const archived: RecordItem = {
       id: old.id,
-      timestamp: timestampOfDate(year, month, day),
+      timestamp: Date.now(),
       dateKey: key,
       isBackfill: key < todayKey(),
       content: old.content,
@@ -372,14 +373,14 @@ export class AppStore {
     if (this.unarchived.length === 0) {
       return;
     }
-    const now = new Date();
     const moved: RecordItem[] = [];
     const key = todayKey();
+    const baseStamp = Date.now();
     for (let i = 0; i < this.unarchived.length; i++) {
       const old = this.unarchived[i];
       const archived: RecordItem = {
         id: old.id,
-        timestamp: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0).getTime(),
+        timestamp: baseStamp + i,
         dateKey: key,
         isBackfill: false,
         content: old.content,

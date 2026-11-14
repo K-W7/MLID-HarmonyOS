@@ -11,7 +11,7 @@ import { DEFAULT_MOOD_LAST } from '../model/AppSettings';
 import { RecordCard } from './RecordCard';
 import { FloatingIsland } from './FloatingIsland';
 import RecordsDataSource from '../store/RecordsDataSource';
-import { appStore, dateKeyOf } from '../store/AppStore';
+import { appStore, dateKeyOf, todayKey } from '../store/AppStore';
 import { applyTheme } from '../utils/ThemeUtil';
 import { resolveImageUri } from '../utils/ImageStore';
 import { currentTint, stopWatchColorMode, watchColorMode } from '../utils/TintProvider';
@@ -86,6 +86,8 @@ export struct JournalContent {
   @Local tint: MoodTint = tintForTime(new Date().getHours(), true);
   private lastDeleted: RecordItem[] = [];
   private undoTimer: number = -1;
+  // 进页面那天是不是「今天」：用于跨午夜判断（用户一直把这页开着，过了 00:00 再写）
+  private openedAsToday: boolean = false;
 
   private refreshTint(): void {
     const next = currentTint(getContext(this) as common.UIAbilityContext);
@@ -96,6 +98,7 @@ export struct JournalContent {
   }
 
   aboutToAppear(): void {
+    this.openedAsToday = this.dayKey() === todayKey();
     this.refreshTint();
     this.envWatchId = watchColorMode(getContext(this) as common.UIAbilityContext, () => {
       this.refreshTint();
@@ -593,14 +596,34 @@ export struct JournalContent {
 
   private async saveAsync(payload: DraftPayload): Promise<void> {
     let createdId = '';
+    // 跨午夜：页面是「今天」打开的，但现在已经过了 00:00 → 这条记到新的一天，别落到昨天
+    const crossedMidnight = this.openedAsToday && this.dayKey() !== todayKey();
     if (payload.editingId !== '') {
       await appStore.updateRecord(payload);
     } else {
+      let targetYear = this.year;
+      let targetMonth = this.month;
+      let targetDay = this.day;
+      if (crossedMidnight) {
+        const now = new Date();
+        targetYear = now.getFullYear();
+        targetMonth = now.getMonth() + 1;
+        targetDay = now.getDate();
+      }
       // 保存返回新记录，落笔动画要按它的 id 定位「刚落下的那张卡」
-      const created = await appStore.addRecord(payload, this.year, this.month, this.day);
+      const created = await appStore.addRecord(payload, targetYear, targetMonth, targetDay);
       createdId = created.id;
     }
     await appStore.clearDraftForDate(this.dayKey());
+    if (crossedMidnight) {
+      // 页面还停在昨天：退回日历，让主页滚到新的一天（onPageShow 会按当前日期重算）
+      this.onDataChanged();
+      this.getUIContext().getPromptAction().showToast({ message: '已经跨天，这条记到今天了。' });
+      setTimeout(() => {
+        this.onBack();
+      }, 260);
+      return;
+    }
     this.syncRecords();
     if (createdId !== '') {
       this.playDraftSink();
