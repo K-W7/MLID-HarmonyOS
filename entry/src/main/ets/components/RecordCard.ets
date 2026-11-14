@@ -259,16 +259,16 @@ export struct RecordCard {
     return this.record.content.length > 90;
   }
 
-  /** 补记辅助信息：补记于 M月D日 HH:mm，跨年补年份；时间为实际补写时间 */
+  /** 补记辅助信息：M月D日 HH:mm，跨年补年份；时间为实际补写时间。前面已有「补记」角标，不再重复写「补记于」 */
   private backfillHint(): string {
     const date = new Date(this.record.timestamp);
     const hour = date.getHours() < 10 ? `0${date.getHours()}` : `${date.getHours()}`;
     const minute = date.getMinutes() < 10 ? `0${date.getMinutes()}` : `${date.getMinutes()}`;
     const now = new Date();
     if (date.getFullYear() === now.getFullYear()) {
-      return `补记于 ${date.getMonth() + 1}月${date.getDate()}日 ${hour}:${minute}`;
+      return `${date.getMonth() + 1}月${date.getDate()}日 ${hour}:${minute}`;
     }
-    return `补记于 ${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${hour}:${minute}`;
+    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${hour}:${minute}`;
   }
 
   private hasQuote(): boolean {
