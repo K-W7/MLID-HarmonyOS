@@ -10,7 +10,6 @@ import { getAfterSaveCopy, getEmptyCopy } from '../model/MoodMeta';
 import { DEFAULT_MOOD_LAST } from '../model/AppSettings';
 import { RecordCard } from './RecordCard';
 import { FloatingIsland } from './FloatingIsland';
-import RecordsDataSource from '../store/RecordsDataSource';
 import { appStore, dateKeyOf, todayKey } from '../store/AppStore';
 import { applyTheme } from '../utils/ThemeUtil';
 import { resolveImageUri } from '../utils/ImageStore';
@@ -26,6 +25,8 @@ export struct JournalContent {
   @Param year: number = 0;
   @Param month: number = 0;
   @Param day: number = 0;
+  // 宿主在 NavDestination.onShown 里自增，用来补上「非 @Entry 页面没有 onPageShow」的缺口
+  @Param refreshToken: number = 0;
   // 回调用 @Event（V2 中 @Param 不接受 function 类型），对外调用方式与 @Param 一致
   @Event onBack: () => void = () => {
   };
@@ -39,7 +40,9 @@ export struct JournalContent {
   @Local emptyCopy: string = '';
   @Local recordCount: number = 0;
   @Local defaultMood: Mood = Mood.NONE;
-  @Local listVersion: number = 0;
+  // 列表数据直接放在 @Local 里，用 ForEach 渲染：LazyForEach 复用节点时
+  // @ComponentV2 的 @Param 不一定重灌，保存/编辑后会出现「存了但列表没变」
+  @Local records: RecordItem[] = [];
   // 列表入场：淡入 + 轻微上移，避免一进页面「啪」地出现
   // 空态 ↔ 列表：切换时先淡出再淡入，不硬切
   @Local stateAlpha: number = 1;
@@ -78,8 +81,9 @@ export struct JournalContent {
   @Local previewIndex: number = 0;
   @Local islandHeight: number = 96;
   @Local showUndo: boolean = false;
+  // 引用的原记录已被删掉的卡（存记录 id）：引用是快照，得在块上标出来源已经没了
+  @Local goneQuoteIds: string[] = [];
   @Local isFuture: boolean = false;
-  private dataSource: RecordsDataSource = new RecordsDataSource([]);
   private listScroller: Scroller = new Scroller();
   // 主题变化监听 + 色温缓存
   private envWatchId: number = -1;
@@ -118,7 +122,10 @@ export struct JournalContent {
     });
   }
 
-  onPageShow(): void {
+  // 真正的「页面再次可见」由宿主的 NavDestination.onShown 驱动 refreshToken；
+  // 普通自定义组件里的 onPageShow 不会触发（只有 @Entry 页面才有），留着会误导。
+  @Monitor('refreshToken')
+  onRefreshTokenChanged(): void {
     this.syncRecords();
   }
 
@@ -251,10 +258,12 @@ export struct JournalContent {
           Blank()
         } else {
           List({ space: 12, scroller: this.listScroller }) {
-            LazyForEach(this.dataSource, (item: RecordItem) => {
+            // key 里带上 updatedAt：编辑过的记录会换 key 重建，@Param 一定拿到新内容
+            ForEach(this.records, (item: RecordItem) => {
               ListItem() {
                 RecordCard({
                   record: item,
+                  quoteDeleted: this.goneQuoteIds.includes(item.id),
                   onDelete: (id: string) => {
                     this.confirmDelete(id);
                   },
@@ -275,7 +284,7 @@ export struct JournalContent {
                 .scale({ x: 1, y: item.id === this.removingId ? this.removeScaleY : 1 })
                 .animation({ duration: motionDuration(180), curve: Curve.EaseIn })
               }
-            }, (item: RecordItem) => item.id)
+            }, (item: RecordItem) => `${item.id}_${item.updatedAt !== undefined ? item.updatedAt : 0}_${this.goneQuoteIds.includes(item.id) ? 1 : 0}`)
             if (this.hasDraftCard()) {
               ListItem() {
                 this.draftCard()
@@ -340,29 +349,32 @@ export struct JournalContent {
       }
 
       if (this.showUndo) {
-        Row() {
-          Text('删掉了。想找回的话，现在还来得及。')
+        // 收成一颗居中的胶囊：之前是占满整行的一条，会盖住下面的卡片
+        Row({ space: 10 }) {
+          Text('删掉了')
             .fontSize($r('app.float.font_meta_small'))
             .fontColor($r('app.color.white'))
-            .layoutWeight(1)
+            .opacity(0.72)
+          Divider()
+            .vertical(true)
+            .height(12)
+            .strokeWidth(1)
+            .color($r('app.color.white'))
+            .opacity(0.24)
           Text('撤销')
             .fontSize($r('app.float.font_meta'))
             .fontWeight(FontWeight.Medium)
             .fontColor($r('app.color.white'))
+            .padding({ left: 2, right: 2, top: 2, bottom: 2 })
             .onClick(() => {
               this.undoDelete();
             })
         }
-        .width('100%')
-        .padding({
-          left: 16,
-          right: 16,
-          top: 12,
-          bottom: 12
-        })
+        .padding({ left: 18, right: 14, top: 10, bottom: 10 })
         .backgroundColor($r('app.color.toast_bg'))
-        .borderRadius($r('app.float.radius_image'))
-        .margin({ left: 20, right: 20, bottom: this.islandHeight + 16 })
+        .borderRadius(22)
+        .shadow({ radius: 18, color: $r('app.color.shadow_card'), offsetY: 6 })
+        .margin({ bottom: this.islandHeight + 16 })
         .zIndex(15)
       }
 
@@ -372,6 +384,13 @@ export struct JournalContent {
     }
     .width('100%')
     .height('100%')
+    // 宽屏限宽要用真实窗口宽度：这个值以前恒为 360，平板/2in1 上卡片会拉满整屏
+    .onAreaChange((oldArea: Area, newArea: Area) => {
+      const widthVp = this.getUIContext().px2vp(Number(newArea.width));
+      if (widthVp > 0 && Math.abs(widthVp - this.winWidth) > 1) {
+        this.winWidth = widthVp;
+      }
+    })
     .backgroundColor($r('app.color.bg_page'))
     // 与主页同一层渐变，避免其他页面是“平的”一块色
     .linearGradient({
@@ -554,7 +573,16 @@ export struct JournalContent {
 
   private syncRecords(): void {
     const records = appStore.getRecordsForDate(this.year, this.month, this.day);
-    this.dataSource.updateItems(records);
+    this.records = records;
+    // 引用块的来源是否还在：删过原记录后要标「原记录已删除」
+    const gone: string[] = [];
+    for (let i = 0; i < records.length; i++) {
+      const quote = records[i].quote;
+      if (quote !== undefined && appStore.getRecordById(quote.recordId) === null) {
+        gone.push(records[i].id);
+      }
+    }
+    this.goneQuoteIds = gone;
     this.recordCount = records.length;
     this.isEmpty = records.length === 0;
     const moods = appStore.getMoodsForDate(this.year, this.month, this.day);
@@ -562,7 +590,22 @@ export struct JournalContent {
     this.defaultMood = appStore.settings.defaultMoodMode === DEFAULT_MOOD_LAST
       ? (appStore.settings.lastMood as Mood)
       : Mood.NONE;
-    this.listVersion++;
+  }
+
+  /** 保存/编辑后把那一张滚进视野：新记录落在列表尾部，不滚就会藏在输入岛后面 */
+  private scrollToRecord(recordId: string): void {
+    const index = this.records.findIndex((item: RecordItem) => item.id === recordId);
+    if (index < 0) {
+      return;
+    }
+    // 等这一帧的 List 用新数据排完版再滚，滚早了会停在旧内容高度上
+    setTimeout(() => {
+      try {
+        this.listScroller.scrollToIndex(index, true, ScrollAlign.END);
+      } catch (e) {
+        this.listScroller.scrollEdge(Edge.Bottom);
+      }
+    }, 120);
   }
 
   private imageUri(name: string): string {
@@ -576,7 +619,7 @@ export struct JournalContent {
 
   /**
    * 保存落笔：新卡片先透明、位于输入区方向（上方），再落到位。
-   * 用 scale/translate 手写而不是 geometryTransition，是因为列表是 LazyForEach，
+   * 用 scale/translate 手写而不是 geometryTransition，是因为列表项会按数据重建，
    * 动态节点上的 geometryTransition 行为不稳定。
    */
   private playLanding(recordId: string): void {
@@ -598,23 +641,29 @@ export struct JournalContent {
     let createdId = '';
     // 跨午夜：页面是「今天」打开的，但现在已经过了 00:00 → 这条记到新的一天，别落到昨天
     const crossedMidnight = this.openedAsToday && this.dayKey() !== todayKey();
-    if (payload.editingId !== '') {
-      await appStore.updateRecord(payload);
-    } else {
-      let targetYear = this.year;
-      let targetMonth = this.month;
-      let targetDay = this.day;
-      if (crossedMidnight) {
-        const now = new Date();
-        targetYear = now.getFullYear();
-        targetMonth = now.getMonth() + 1;
-        targetDay = now.getDate();
+    try {
+      if (payload.editingId !== '') {
+        await appStore.updateRecord(payload);
+      } else {
+        let targetYear = this.year;
+        let targetMonth = this.month;
+        let targetDay = this.day;
+        if (crossedMidnight) {
+          const now = new Date();
+          targetYear = now.getFullYear();
+          targetMonth = now.getMonth() + 1;
+          targetDay = now.getDate();
+        }
+        // 保存返回新记录，落笔动画要按它的 id 定位「刚落下的那张卡」
+        const created = await appStore.addRecord(payload, targetYear, targetMonth, targetDay);
+        createdId = created.id;
       }
-      // 保存返回新记录，落笔动画要按它的 id 定位「刚落下的那张卡」
-      const created = await appStore.addRecord(payload, targetYear, targetMonth, targetDay);
-      createdId = created.id;
+      await appStore.clearDraftForDate(this.dayKey());
+    } catch (e) {
+      // 以前这里一抛就被 async 吞掉：没有提示、列表也不刷新，看着像「点了没反应」
+      this.getUIContext().getPromptAction().showToast({ message: '这次没存上，再点一下试试。' });
+      return;
     }
-    await appStore.clearDraftForDate(this.dayKey());
     if (crossedMidnight) {
       // 页面还停在昨天：退回日历，让主页滚到新的一天（onPageShow 会按当前日期重算）
       this.onDataChanged();
@@ -631,9 +680,8 @@ export struct JournalContent {
     }
     // 主页仍在被盖住时刷新它，退回时直接是最终状态
     this.onDataChanged();
-    setTimeout(() => {
-      this.listScroller.scrollEdge(Edge.Bottom);
-    }, 120);
+    // 新记录在尾部、编辑的记录可能在屏幕外：两种都滚到它，别让它藏在输入岛后面
+    this.scrollToRecord(createdId !== '' ? createdId : payload.editingId);
     this.getUIContext().getPromptAction().showToast({ message: '记下了。' });
   }
 
@@ -702,9 +750,14 @@ export struct JournalContent {
 
   private confirmDelete(id: string): void {
     const annotations = appStore.countAnnotations(id);
+    const quotedBy = appStore.countQuotesOf(id);
     let message = '这条要删掉吗？删了就找不回来了。';
     if (annotations > 0) {
-      message = `${message}这条下面还有 ${annotations} 条批注，会一起删掉。`;
+      message = `${message}\n下面还有 ${annotations} 条批注，会一起删掉。`;
+    }
+    if (quotedBy > 0) {
+      // 引用存的是当时的快照：删掉原记录，引用里的文字仍然留着，得先讲明白
+      message = `${message}\n另有 ${quotedBy} 条记录引用了它，引用里的文字会保留，并标记「原记录已删除」。`;
     }
     AlertDialog.show({
       title: '删除记录',

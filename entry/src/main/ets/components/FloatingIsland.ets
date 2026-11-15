@@ -86,6 +86,11 @@ export struct FloatingIsland {
   onPrefillTokenChanged(): void {
     // 只把草稿填回输入框，不自动展开：一进页面就弹键盘太吵
     this.applyPrefill();
+    // 长按「编辑」是用户主动的动作：直接展开并聚焦，否则看不出发生了什么
+    if (this.prefillEditingId !== '') {
+      this.userTouched = true;
+      this.expand();
+    }
   }
 
   @Monitor('defaultMood')

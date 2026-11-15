@@ -265,6 +265,18 @@ export class AppStore {
     return count;
   }
 
+  /** 有多少条记录引用了这条：引用是快照，删掉原记录后引用里的文字还会留着，删之前要说清楚 */
+  countQuotesOf(recordId: string): number {
+    let count = 0;
+    for (let i = 0; i < this.records.length; i++) {
+      const quote = this.records[i].quote;
+      if (quote !== undefined && quote.recordId === recordId) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   async addRecord(payload: DraftPayload, year: number, month: number, day: number): Promise<RecordItem> {
     const key = dateKeyOf(year, month, day);
     const item: RecordItem = {
@@ -284,7 +296,7 @@ export class AppStore {
       item.quote = payload.quote;
     }
     this.records = this.records.concat([item]);
-    await this.persistRecords();
+    await this.persistItem(item);
     if (item.moods.length > 0) {
       await this.rememberMood(item.moods[0]);
     }
@@ -310,13 +322,14 @@ export class AppStore {
     if (old.parentId !== undefined) {
       updated.parentId = old.parentId;
     }
-    if (old.quote !== undefined) {
-      updated.quote = old.quote;
+    // 引用要跟着这次编辑走：编辑时点掉引用，保存后就不该再留着
+    if (payload.quote !== null && payload.quote !== undefined) {
+      updated.quote = payload.quote;
     }
     const next = this.records.slice();
     next[index] = updated;
     this.records = next;
-    await this.persistRecords();
+    await this.persistItem(updated);
     if (updated.moods.length > 0) {
       await this.rememberMood(updated.moods[0]);
     }
@@ -331,7 +344,7 @@ export class AppStore {
       }
     }
     this.records = next;
-    await this.persistRecords();
+    await this.persistItemRemoved(id);
   }
 
   buildQuote(record: RecordItem): QuoteRef {
@@ -433,6 +446,24 @@ export class AppStore {
 
   private async persistRecords(): Promise<void> {
     await this.persistAll();
+  }
+
+  /**
+   * 单条落库：以前每存一条都 replaceAll 整库重写，记录多了会越来越慢。
+   * 增/改/删走单条事务，导入、重置这类批量操作仍走整表替换。
+   */
+  private async persistItem(item: RecordItem): Promise<void> {
+    if (this.db === null) {
+      return;
+    }
+    await this.db.upsert(item);
+  }
+
+  private async persistItemRemoved(id: string): Promise<void> {
+    if (this.db === null) {
+      return;
+    }
+    await this.db.remove(id);
   }
 
   private async persistUnarchived(): Promise<void> {

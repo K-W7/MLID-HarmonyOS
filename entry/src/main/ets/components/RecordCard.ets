@@ -15,9 +15,14 @@ function formatTime(timestamp: number): string {
 export struct RecordCard {
   @Require @Param record: RecordItem;
   @Param showActions: boolean = true;
+  // 引用块里的原记录已经被删掉了：文字还在（快照），但得标出来源没了
+  @Param quoteDeleted: boolean = false;
   @Local expanded: boolean = false;
   @Local offsetX: number = 0;
   @Local cardHeight: number = 0;
+  // 正文是否真的被 4 行截断：按实测行高/宽度算，不再用字符数猜
+  @Local overflowing: boolean = false;
+  private measuredWidthVp: number = 0;
   private startOffset: number = 0;
 
   @Event onDelete: (id: string) => void = () => {
@@ -34,24 +39,34 @@ export struct RecordCard {
 
   @Builder
   quoteBlock() {
-    Row({ space: 8 }) {
-      Text(this.quoteContent())
-        .fontSize($r('app.float.font_body_small'))
-        .fontColor($r('app.color.text_secondary'))
-        .lineHeight($r('app.float.line_body_small'))
-        .maxLines(2)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .layoutWeight(1)
-      if (this.quoteImage() !== '') {
-        Image(this.imageUri(this.quoteImage()))
-          .width($r('app.float.image_quote'))
-          .height($r('app.float.image_quote'))
-          .borderRadius($r('app.float.radius_image'))
-          .objectFit(ImageFit.Cover)
-          .syncLoad(false)
+    Column({ space: 4 }) {
+      Row({ space: 8 }) {
+        Text(this.quoteContent())
+          .fontSize($r('app.float.font_body_small'))
+          .fontColor($r('app.color.text_secondary'))
+          .lineHeight($r('app.float.line_body_small'))
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .layoutWeight(1)
+        if (this.quoteImage() !== '') {
+          Image(this.imageUri(this.quoteImage()))
+            .width($r('app.float.image_quote'))
+            .height($r('app.float.image_quote'))
+            .borderRadius($r('app.float.radius_image'))
+            .objectFit(ImageFit.Cover)
+            .syncLoad(false)
+        }
+      }
+      .width('100%')
+
+      if (this.quoteDeleted) {
+        Text('原记录已删除')
+          .fontSize($r('app.float.font_meta_small'))
+          .fontColor($r('app.color.text_placeholder'))
       }
     }
     .width('100%')
+    .alignItems(HorizontalAlign.Start)
     .padding(8)
     .backgroundColor($r('app.color.quote_bg'))
     .borderRadius($r('app.float.radius_image'))
@@ -156,6 +171,14 @@ export struct RecordCard {
               .lineHeight($r('app.float.line_body'))
               .maxLines(this.expanded ? 40 : 4)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .onAreaChange((oldArea: Area, newArea: Area) => {
+                // 只在宽度变了才重新量：滚动/展开引起的高度变化不需要重算
+                const widthVp = Number(newArea.width);
+                if (widthVp > 0 && Math.abs(widthVp - this.measuredWidthVp) > 1) {
+                  this.measuredWidthVp = widthVp;
+                  this.measureOverflow(widthVp);
+                }
+              })
           }
 
 
@@ -183,8 +206,8 @@ export struct RecordCard {
             }
             Blank()
             this.moodDots()
-            // 长文才有「展开/收起」，和情绪点同一行：点会被它往左挤一格
-            if (this.isLongContent()) {
+            // 真的超 4 行才给「展开/收起」，和情绪点同一行：点会被它往左挤一格
+            if (this.overflowing) {
               Text(this.expanded ? '收起' : '展开')
                 .fontSize($r('app.float.font_meta_small'))
                 .fontColor($r('app.color.text_secondary'))
@@ -256,7 +279,36 @@ export struct RecordCard {
   }
 
   private isLongContent(): boolean {
-    return this.record.content.length > 90;
+    return this.overflowing;
+  }
+
+  /**
+   * 用同一套字号/行高把全文量一遍，超过 4 行才算「被截断」。
+   * 之前用「字符数 > 90」判断，中文 4 行只装 ~70 字，60 多字就被截断却不算长。
+   */
+  private measureOverflow(widthVp: number): void {
+    const content = this.record.content;
+    if (content === '') {
+      this.overflowing = false;
+      return;
+    }
+    try {
+      const ui = this.getUIContext();
+      const res = (getContext(this) as common.UIAbilityContext).resourceManager;
+      // 注意：资源里的 float 读出来是 px，measureTextSize 的 fontSize 收 fp、lineHeight 收 vp，得换回去
+      const fontBody = ui.px2fp(res.getNumber($r('app.float.font_body').id));
+      const lineBody = ui.px2vp(res.getNumber($r('app.float.line_body').id));
+      const size = ui.getMeasureUtils().measureTextSize({
+        textContent: content,
+        fontSize: fontBody,
+        lineHeight: lineBody,
+        constraintWidth: widthVp
+      });
+      this.overflowing = Number(size.height) > ui.vp2px(lineBody * 4) + 2;
+    } catch (e) {
+      // 量不出来就退回粗估：一行约 18 个中文字符
+      this.overflowing = content.length > 70;
+    }
   }
 
   /** 补记辅助信息：M月D日 HH:mm，跨年补年份；时间为实际补写时间。前面已有「补记」角标，不再重复写「补记于」 */
