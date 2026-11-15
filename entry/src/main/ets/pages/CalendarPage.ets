@@ -104,6 +104,8 @@ struct CalendarPage {
   // 主题变化监听 + 色温缓存（回调里刷新，实现秒切）
   private envWatchId: number = -1;
   private pathStack: NavPathStack = new NavPathStack();
+  // 子页再次可见的计数器：非 @Entry 组件没有 onPageShow，用 NavDestination.onShown 手动通知
+  @Local dayRefreshToken: number = 0;
   // 跨午夜跟随：记着页面认为的「今天」，每 30 秒对一次表
   private todayKeySeen: string = todayKey();
   private midnightTimer: number = -1;
@@ -1051,6 +1053,7 @@ struct CalendarPage {
           year: (param as DayParam).year,
           month: (param as DayParam).month,
           day: (param as DayParam).day,
+          refreshToken: this.dayRefreshToken,
           onBack: () => {
             this.pathStack.pop();
           },
@@ -1067,6 +1070,10 @@ struct CalendarPage {
     // 转场期间 NavDestination 默认底色是系统色（深色下为黑），先铺上本色
     .backgroundColor(this.tint.top)
     .systemBarStyle({ statusBarContentColor: this.statusIconColor() })
+    // 子页（日页/设置）再次可见时通知它自己刷新：组件里的 onPageShow 不会触发
+    .onShown(() => {
+      this.dayRefreshToken++;
+    })
     // 子页返回时重算色温：在设置里换了深浅色，回主页立刻生效
     .onDisAppear(() => {
       // 只做不改变内容的刷新：跨天对表、色温、区块可见性。
