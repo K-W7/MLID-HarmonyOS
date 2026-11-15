@@ -265,6 +265,18 @@ export class AppStore {
     return count;
   }
 
+  /** 有多少条记录引用了这条：引用是快照，删掉原记录后引用里的文字还会留着，删之前要说清楚 */
+  countQuotesOf(recordId: string): number {
+    let count = 0;
+    for (let i = 0; i < this.records.length; i++) {
+      const quote = this.records[i].quote;
+      if (quote !== undefined && quote.recordId === recordId) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   async addRecord(payload: DraftPayload, year: number, month: number, day: number): Promise<RecordItem> {
     const key = dateKeyOf(year, month, day);
     const item: RecordItem = {

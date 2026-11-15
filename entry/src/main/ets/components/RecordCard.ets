@@ -15,6 +15,8 @@ function formatTime(timestamp: number): string {
 export struct RecordCard {
   @Require @Param record: RecordItem;
   @Param showActions: boolean = true;
+  // 引用块里的原记录已经被删掉了：文字还在（快照），但得标出来源没了
+  @Param quoteDeleted: boolean = false;
   @Local expanded: boolean = false;
   @Local offsetX: number = 0;
   @Local cardHeight: number = 0;
@@ -37,24 +39,34 @@ export struct RecordCard {
 
   @Builder
   quoteBlock() {
-    Row({ space: 8 }) {
-      Text(this.quoteContent())
-        .fontSize($r('app.float.font_body_small'))
-        .fontColor($r('app.color.text_secondary'))
-        .lineHeight($r('app.float.line_body_small'))
-        .maxLines(2)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .layoutWeight(1)
-      if (this.quoteImage() !== '') {
-        Image(this.imageUri(this.quoteImage()))
-          .width($r('app.float.image_quote'))
-          .height($r('app.float.image_quote'))
-          .borderRadius($r('app.float.radius_image'))
-          .objectFit(ImageFit.Cover)
-          .syncLoad(false)
+    Column({ space: 4 }) {
+      Row({ space: 8 }) {
+        Text(this.quoteContent())
+          .fontSize($r('app.float.font_body_small'))
+          .fontColor($r('app.color.text_secondary'))
+          .lineHeight($r('app.float.line_body_small'))
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .layoutWeight(1)
+        if (this.quoteImage() !== '') {
+          Image(this.imageUri(this.quoteImage()))
+            .width($r('app.float.image_quote'))
+            .height($r('app.float.image_quote'))
+            .borderRadius($r('app.float.radius_image'))
+            .objectFit(ImageFit.Cover)
+            .syncLoad(false)
+        }
+      }
+      .width('100%')
+
+      if (this.quoteDeleted) {
+        Text('原记录已删除')
+          .fontSize($r('app.float.font_meta_small'))
+          .fontColor($r('app.color.text_placeholder'))
       }
     }
     .width('100%')
+    .alignItems(HorizontalAlign.Start)
     .padding(8)
     .backgroundColor($r('app.color.quote_bg'))
     .borderRadius($r('app.float.radius_image'))

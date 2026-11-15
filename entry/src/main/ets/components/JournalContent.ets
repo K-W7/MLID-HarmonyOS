@@ -81,6 +81,8 @@ export struct JournalContent {
   @Local previewIndex: number = 0;
   @Local islandHeight: number = 96;
   @Local showUndo: boolean = false;
+  // 引用的原记录已被删掉的卡（存记录 id）：引用是快照，得在块上标出来源已经没了
+  @Local goneQuoteIds: string[] = [];
   @Local isFuture: boolean = false;
   private listScroller: Scroller = new Scroller();
   // 主题变化监听 + 色温缓存
@@ -261,6 +263,7 @@ export struct JournalContent {
               ListItem() {
                 RecordCard({
                   record: item,
+                  quoteDeleted: this.goneQuoteIds.includes(item.id),
                   onDelete: (id: string) => {
                     this.confirmDelete(id);
                   },
@@ -281,7 +284,7 @@ export struct JournalContent {
                 .scale({ x: 1, y: item.id === this.removingId ? this.removeScaleY : 1 })
                 .animation({ duration: motionDuration(180), curve: Curve.EaseIn })
               }
-            }, (item: RecordItem) => `${item.id}_${item.updatedAt !== undefined ? item.updatedAt : 0}`)
+            }, (item: RecordItem) => `${item.id}_${item.updatedAt !== undefined ? item.updatedAt : 0}_${this.goneQuoteIds.includes(item.id) ? 1 : 0}`)
             if (this.hasDraftCard()) {
               ListItem() {
                 this.draftCard()
@@ -346,29 +349,32 @@ export struct JournalContent {
       }
 
       if (this.showUndo) {
-        Row() {
-          Text('删掉了。想找回的话，现在还来得及。')
+        // 收成一颗居中的胶囊：之前是占满整行的一条，会盖住下面的卡片
+        Row({ space: 10 }) {
+          Text('删掉了')
             .fontSize($r('app.float.font_meta_small'))
             .fontColor($r('app.color.white'))
-            .layoutWeight(1)
+            .opacity(0.72)
+          Divider()
+            .vertical(true)
+            .height(12)
+            .strokeWidth(1)
+            .color($r('app.color.white'))
+            .opacity(0.24)
           Text('撤销')
             .fontSize($r('app.float.font_meta'))
             .fontWeight(FontWeight.Medium)
             .fontColor($r('app.color.white'))
+            .padding({ left: 2, right: 2, top: 2, bottom: 2 })
             .onClick(() => {
               this.undoDelete();
             })
         }
-        .width('100%')
-        .padding({
-          left: 16,
-          right: 16,
-          top: 12,
-          bottom: 12
-        })
+        .padding({ left: 18, right: 14, top: 10, bottom: 10 })
         .backgroundColor($r('app.color.toast_bg'))
-        .borderRadius($r('app.float.radius_image'))
-        .margin({ left: 20, right: 20, bottom: this.islandHeight + 16 })
+        .borderRadius(22)
+        .shadow({ radius: 18, color: $r('app.color.shadow_card'), offsetY: 6 })
+        .margin({ bottom: this.islandHeight + 16 })
         .zIndex(15)
       }
 
@@ -568,6 +574,15 @@ export struct JournalContent {
   private syncRecords(): void {
     const records = appStore.getRecordsForDate(this.year, this.month, this.day);
     this.records = records;
+    // 引用块的来源是否还在：删过原记录后要标「原记录已删除」
+    const gone: string[] = [];
+    for (let i = 0; i < records.length; i++) {
+      const quote = records[i].quote;
+      if (quote !== undefined && appStore.getRecordById(quote.recordId) === null) {
+        gone.push(records[i].id);
+      }
+    }
+    this.goneQuoteIds = gone;
     this.recordCount = records.length;
     this.isEmpty = records.length === 0;
     const moods = appStore.getMoodsForDate(this.year, this.month, this.day);
@@ -735,9 +750,14 @@ export struct JournalContent {
 
   private confirmDelete(id: string): void {
     const annotations = appStore.countAnnotations(id);
+    const quotedBy = appStore.countQuotesOf(id);
     let message = '这条要删掉吗？删了就找不回来了。';
     if (annotations > 0) {
-      message = `${message}这条下面还有 ${annotations} 条批注，会一起删掉。`;
+      message = `${message}\n下面还有 ${annotations} 条批注，会一起删掉。`;
+    }
+    if (quotedBy > 0) {
+      // 引用存的是当时的快照：删掉原记录，引用里的文字仍然留着，得先讲明白
+      message = `${message}\n另有 ${quotedBy} 条记录引用了它，引用里的文字会保留，并标记「原记录已删除」。`;
     }
     AlertDialog.show({
       title: '删除记录',
